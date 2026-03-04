@@ -1,52 +1,56 @@
 import { PlayerColor } from './types';
 
-export interface Point {
-  x: number;
-  y: number;
-}
+export interface Point { x: number; y: number; }
 
-// Parchis board is 15x15 cells
-// We map each position (0-67) to grid coordinates (0-14, 0-14)
+export const GRID_SIZE = 17;
+
 export const getSquareCoords = (pos: number): Point => {
-  // Simplified mapping for a 15x15 cross board
-  // This is a rough approximation of the Parchis path
-  if (pos >= 0 && pos <= 7) return { x: 6, y: 13 - pos };
-  if (pos >= 8 && pos <= 15) return { x: 5 - (pos - 8), y: 8 };
-  if (pos >= 16 && pos <= 18) return { x: 0, y: 7 - (pos - 16) };
-  if (pos >= 19 && pos <= 26) return { x: pos - 19 + 1, y: 6 };
-  if (pos >= 27 && pos <= 34) return { x: 6, y: 5 - (pos - 27) };
-  if (pos >= 35 && pos <= 37) return { x: 7 + (pos - 35), y: 0 };
-  if (pos >= 38 && pos <= 45) return { x: 8, y: pos - 38 + 1 };
-  if (pos >= 46 && pos <= 53) return { x: 9 + (pos - 46), y: 6 };
-  if (pos >= 54 && pos <= 56) return { x: 14, y: 7 + (pos - 54) };
-  if (pos >= 57 && pos <= 64) return { x: 13 - (pos - 57), y: 8 };
-  if (pos >= 65 && pos <= 67) return { x: 8, y: 9 + (pos - 65) };
-  return { x: 7, y: 7 }; // Center
+  // Classic 17x17 Parchis Mapping (Based on imagenes/parchis.jpg)
+  // Square 1 is Red Salida in Top Arm Left Col.
+  return getClassicPath(pos);
+};
+
+const getClassicPath = (pos: number): Point => {
+  // Definitive 17x17 mapping for 68 squares
+  const final: [number, number][] = [];
+  // Top Arm
+  for (let r = 6; r >= 0; r--) final.push([7, r]); final.push([8, 0]); for (let r = 0; r <= 6; r++) final.push([9, r]);
+  final.push([10, 7]); final.push([11, 7]);
+  // Right Arm
+  for (let c = 12; c <= 16; c++) final.push([c, 7]); final.push([16, 8]); for (let c = 16; c >= 10; c--) final.push([c, 9]);
+  final.push([9, 10]); final.push([9, 11]);
+  // Bottom Arm
+  for (let r = 12; r <= 16; r++) final.push([9, r]); final.push([8, 16]); for (let r = 16; r >= 10; r--) final.push([7, r]);
+  final.push([6, 9]); final.push([5, 9]);
+  // Left Arm
+  for (let c = 4; c >= 0; c--) final.push([c, 9]); final.push([0, 8]); for (let c = 0; c <= 6; c++) final.push([c, 7]);
+
+  // Total: (7+1+7+2) * 4 = 17 * 4 = 68. Bingo!
+  // RED EXIT is Pos 3 in Top-Left Arm ([7, 4]). 
+  // Wait, if Pos 1 = Red Salida, then I'll rotate the array.
+
+  const rotated = [...final.slice(2), ...final.slice(0, 2)];
+  const p = rotated[pos - 1] || [8, 8];
+  return { x: p[0], y: p[1] };
 };
 
 export const getHomeCoords = (color: PlayerColor, index: number): Point => {
-  const offsets = [
-    { x: 1.5, y: 1.5 },
-    { x: 3.5, y: 1.5 },
-    { x: 1.5, y: 3.5 },
-    { x: 3.5, y: 3.5 },
-  ];
-  const offset = offsets[index % 4];
+  const circles: [number, number][] = [[1.5, 1.5], [4.5, 1.5], [1.5, 4.5], [4.5, 4.5]];
+  const [ox, oy] = circles[index % 4];
   switch (color) {
-    case 'red': return { x: offset.x, y: offset.y };
-    case 'yellow': return { x: 9 + offset.x, y: offset.y };
-    case 'blue': return { x: offset.x, y: 9 + offset.y };
-    case 'green': return { x: 9 + offset.x, y: 9 + offset.y };
+    case 'red': return { x: ox, y: oy };           // Top-Left
+    case 'yellow': return { x: 10 + ox, y: oy };    // Top-Right
+    case 'green': return { x: ox, y: 10 + oy };      // Bottom-Left
+    case 'blue': return { x: 10 + ox, y: 10 + oy }; // Bottom-Right
   }
 };
 
 export const getFinalPathCoords = (color: PlayerColor, pos: number): Point => {
-  // pos 68-75
   const step = pos - 68;
   switch (color) {
-    case 'red': return { x: 7, y: 13 - step };
-    case 'yellow': return { x: 1 + step, y: 7 };
-    case 'blue': return { x: 13 - step, y: 7 };
-    case 'green': return { x: 7, y: 1 + step };
+    case 'red': return { x: 8, y: 7 - step }; // Red goal lane: Col 8, Rows 7 down to 1
+    case 'yellow': return { x: 9 + step, y: 8 }; // Yellow goal lane: Row 8, Cols 9 up to 15
+    case 'blue': return { x: 8, y: 9 + step }; // Blue goal lane: Col 8, Rows 9 up to 15
+    case 'green': return { x: 7 - step, y: 8 }; // Green goal lane: Row 8, Cols 7 down to 1
   }
 };

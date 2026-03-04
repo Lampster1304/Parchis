@@ -9,7 +9,11 @@
       "Bash(TSX_LOG=3 node_modules/.bin/tsx:*)",
       "Bash(npm install:*)",
       "Bash(rm:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(npx tsc:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx tsx:*)"
     ]
   }
 }

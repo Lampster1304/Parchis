@@ -11,22 +11,22 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
     server: {
       host: '0.0.0.0', // Allow network access (for mobile)
       proxy: {
         '/api': {
-          target: 'http://localhost:3000',
+          target: 'http://127.0.0.1:3000',
           changeOrigin: true
         },
         '/socket.io': {
-          target: 'http://localhost:3000',
+          target: 'http://127.0.0.1:3000',
           ws: true,
           changeOrigin: true
         }

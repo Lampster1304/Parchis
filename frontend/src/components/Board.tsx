@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { PlayerColor, Token } from '../types';
 import { getSquareCoords, getHomeCoords, getFinalPathCoords, Point } from '../boardLayout';
@@ -10,210 +10,138 @@ interface BoardProps {
   highlightedPositions?: number[];
 }
 
+const COLORS = {
+  red: '#FF4D6D',
+  yellow: '#FFEA00',
+  green: '#00E676',
+  blue: '#2979FF',
+  white: '#FFFFFF',
+  black: '#000000',
+  border: '#333333'
+};
+
 export const ParchisBoard: React.FC<BoardProps> = ({ tokens, onTokenClick, highlightedPositions = [] }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const BOARD_SIZE = 800;
-  const CELL_SIZE = BOARD_SIZE / 15;
+  const GRID_SIZE = 17;
 
-  const COLORS = {
-    red: '#EF5350',
-    yellow: '#FBC02D',
-    blue: '#2196F3',
-    green: '#4CAF50',
-    safe: '#E0E0E0',
-    white: '#FFFFFF',
-    text: '#94A3B8'
+  const getTokensAtPos = (pos: number, tokenColor?: PlayerColor) => {
+    return tokens.filter(t => t.position === pos && (pos !== -1 || t.color === tokenColor));
   };
-
-  useEffect(() => {
-    const drawBoard = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Ensure crisp drawing
-      ctx.imageSmoothingEnabled = true;
-
-      ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE);
-
-      // 1. Board Shadow/Base
-      ctx.fillStyle = '#E2E8F0';
-      ctx.beginPath();
-      ctx.roundRect(0, 0, BOARD_SIZE, BOARD_SIZE, 30);
-      ctx.fill();
-
-      // 2. Wooden/Tan Frame
-      ctx.fillStyle = '#E5C49F';
-      ctx.beginPath();
-      ctx.roundRect(0, 0, BOARD_SIZE, BOARD_SIZE, 30);
-      ctx.fill();
-
-      // Internal White background
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(CELL_SIZE * 0.2, CELL_SIZE * 0.2, BOARD_SIZE - CELL_SIZE * 0.4, BOARD_SIZE - CELL_SIZE * 0.4);
-
-      // Helper for Star
-      const drawStar = (cx: number, cy: number, radius: number) => {
-        const spikes = 5;
-        const outerRadius = radius;
-        const innerRadius = radius / 2;
-        ctx.beginPath();
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(-Math.PI / 2);
-        for (let i = 0; i < spikes; i++) {
-          ctx.lineTo(Math.cos((i * 2 + 0) * Math.PI / spikes) * outerRadius, Math.sin((i * 2 + 0) * Math.PI / spikes) * outerRadius);
-          ctx.lineTo(Math.cos((i * 2 + 1) * Math.PI / spikes) * innerRadius, Math.sin((i * 2 + 1) * Math.PI / spikes) * innerRadius);
-        }
-        ctx.closePath();
-        ctx.fillStyle = '#A0AEC0';
-        ctx.fill();
-        ctx.restore();
-      };
-
-      // Helper to draw a cell
-      const drawCell = (x: number, y: number, color: string = '#FFFFFF', isSafe: boolean = false, pos?: number) => {
-        const px = x * CELL_SIZE;
-        const py = y * CELL_SIZE;
-
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#CBD5E0';
-        ctx.lineWidth = 1;
-        ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
-        ctx.strokeRect(px, py, CELL_SIZE, CELL_SIZE);
-
-        if (isSafe && pos === undefined) {
-          drawStar(px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE * 0.25);
-        }
-
-        if (pos !== undefined) {
-          ctx.fillStyle = COLORS.text;
-          ctx.font = '10px "Inter", sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(pos.toString(), px + CELL_SIZE / 2, py + CELL_SIZE * 0.2);
-
-          if (isSafe) {
-            drawStar(px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE * 0.25);
-          }
-        }
-      };
-
-      // 3. Draw Path Squares (0-67)
-      const safeSquares = [5, 12, 17, 22, 29, 34, 39, 46, 51, 56, 63, 68];
-      for (let i = 0; i < 68; i++) {
-        const { x, y } = getSquareCoords(i);
-        const isSafe = safeSquares.includes(i);
-
-        let cellColor = '#FFFFFF';
-        if (i === 5) cellColor = COLORS.red;
-        if (i === 22) cellColor = COLORS.blue;
-        if (i === 39) cellColor = COLORS.yellow;
-        if (i === 56) cellColor = COLORS.green;
-
-        drawCell(x, y, cellColor, isSafe, i);
-      }
-
-      // 4. Draw Home Bases (Nidos)
-      const drawHomeBase = (x: number, y: number, color: string) => {
-        const px = x * CELL_SIZE;
-        const py = y * CELL_SIZE;
-        const size = CELL_SIZE * 6;
-
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.roundRect(px + 4, py + 4, size - 8, size - 8, 20);
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.beginPath();
-        ctx.roundRect(px + CELL_SIZE, py + CELL_SIZE, size - CELL_SIZE * 2, size - CELL_SIZE * 2, 10);
-        ctx.fill();
-
-        for (let i = 0; i < 4; i++) {
-          const sx = px + (i % 2 === 0 ? 2 : 4) * CELL_SIZE;
-          const sy = py + (i < 2 ? 2 : 4) * CELL_SIZE;
-
-          ctx.beginPath();
-          ctx.arc(sx, sy, CELL_SIZE * 0.6, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(0,0,0,0.1)';
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
-      };
-
-      drawHomeBase(0, 0, COLORS.red);
-      drawHomeBase(9, 0, COLORS.yellow);
-      drawHomeBase(0, 9, COLORS.blue);
-      drawHomeBase(9, 9, COLORS.green);
-
-      // 5. Final Paths
-      const pathColors = { red: COLORS.red, yellow: COLORS.yellow, blue: COLORS.blue, green: COLORS.green };
-      (['red', 'yellow', 'blue', 'green'] as PlayerColor[]).forEach(color => {
-        for (let i = 68; i <= 75; i++) {
-          const { x, y } = getFinalPathCoords(color, i);
-          drawCell(x, y, pathColors[color], false);
-        }
-      });
-
-      // 6. Center Goal
-      const drawCenterTri = (p1: { x: number, y: number }, p2: { x: number, y: number }, p3: { x: number, y: number }, color: string) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(p1.x * CELL_SIZE, p1.y * CELL_SIZE);
-        ctx.lineTo(p2.x * CELL_SIZE, p2.y * CELL_SIZE);
-        ctx.lineTo(p3.x * CELL_SIZE, p3.y * CELL_SIZE);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      };
-
-      drawCenterTri({ x: 6, y: 6 }, { x: 9, y: 6 }, { x: 7.5, y: 7.5 }, COLORS.green);
-      drawCenterTri({ x: 9, y: 6 }, { x: 9, y: 9 }, { x: 7.5, y: 7.5 }, COLORS.yellow);
-      drawCenterTri({ x: 9, y: 9 }, { x: 6, y: 9 }, { x: 7.5, y: 7.5 }, COLORS.red);
-      drawCenterTri({ x: 6, y: 9 }, { x: 6, y: 6 }, { x: 7.5, y: 7.5 }, COLORS.blue);
-    };
-
-    drawBoard();
-  }, [tokens, BOARD_SIZE, CELL_SIZE]); // Added sizing dependencies just in case
 
   const getTokenCoords = (token: Token) => {
     let point: Point;
+    const tokensAtThisPos = getTokensAtPos(token.position, token.color);
+    const tokenIndex = tokensAtThisPos.findIndex(t => t.id === token.id);
+    const isBlockade = tokensAtThisPos.length > 1;
+
     if (token.position === -1) {
-      const playerTokens = tokens.filter(t => t.color === token.color);
-      const index = playerTokens.findIndex(t => t.id === token.id);
-      point = getHomeCoords(token.color, index);
+      point = getHomeCoords(token.color, tokenIndex);
     } else if (token.position >= 68) {
       point = getFinalPathCoords(token.color, token.position);
     } else {
       point = getSquareCoords(token.position);
     }
+
+    const offsetX = isBlockade ? (tokenIndex === 0 ? -25 : 25) : 0;
+    const scale = isBlockade ? 0.75 : 0.9;
+
     return {
-      left: `${(point.x / 15) * 100}%`,
-      top: `${(point.y / 15) * 100}%`,
-      width: `${(1 / 15) * 100}%`,
-      height: `${(1 / 15) * 100}%`,
+      left: `${(point.x / GRID_SIZE) * 100}%`,
+      top: `${(point.y / GRID_SIZE) * 100}%`,
+      width: `${(1 / GRID_SIZE) * 100}%`,
+      height: `${(1 / GRID_SIZE) * 100}%`,
+      transform: `translate(${offsetX}%, 0) scale(${scale})`,
+      zIndex: 40 + tokenIndex,
     };
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="relative w-[min(90vw,90vh,700px)] aspect-square bg-[#E5C49F] rounded-[2.5rem] p-4 md:p-6 shadow-[0_20px_80px_rgba(0,0,0,0.6)] border-[10px] border-[#D2B48C] flex items-center justify-center"
+      className="relative w-[min(95vw,95vh,800px)] aspect-square bg-[#BBBBBB] rounded-2xl p-2 md:p-6 shadow-2xl flex items-center justify-center overflow-hidden"
     >
-      <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-white shadow-[inset_0_2px_15px_rgba(0,0,0,0.2)]">
-        <canvas
-          ref={canvasRef}
-          width={BOARD_SIZE}
-          height={BOARD_SIZE}
-          className="absolute inset-0 w-full h-full"
-        />
+      <div className="relative w-full h-full bg-white rounded shadow-inner border-[1px] border-black/30 grid grid-cols-17 grid-rows-17 overflow-hidden">
+
+        {/* Home Areas (7x7) */}
+        <HomeArea color="red" className="col-start-1 col-end-8 row-start-1 row-end-8" />
+        <HomeArea color="yellow" className="col-start-11 col-end-18 row-start-1 row-end-8" />
+        <HomeArea color="green" className="col-start-1 col-end-8 row-start-11 row-end-18" />
+        <HomeArea color="blue" className="col-start-11 col-end-18 row-start-11 row-end-18" />
+
+        {/* Path Rendering */}
+        <div className="absolute inset-0 grid grid-cols-17 grid-rows-17 pointer-events-none">
+          {Array.from({ length: 68 }).map((_, i) => {
+            const pos = i + 1;
+            const point = getSquareCoords(pos);
+
+            // Refined safe squares for 17x17 shifted mapping (Red Salida = 1)
+            const safeSquares = [1, 8, 13, 18, 25, 30, 35, 42, 47, 52, 59, 64, 68];
+            const exits = [1, 18, 35, 52];
+            const isSafe = safeSquares.includes(pos);
+            const isExit = exits.includes(pos);
+
+            const colorMap = {
+              1: COLORS.red,
+              18: COLORS.yellow,
+              35: COLORS.blue,
+              52: COLORS.green
+            };
+
+            return (
+              <div
+                key={pos}
+                className={cn(
+                  "border-[0.5px] border-black/10 flex items-center justify-center relative bg-white",
+                  isExit ? "" : "" // Logic in style for precision
+                )}
+                style={{
+                  gridColumnStart: point.x + 1,
+                  gridRowStart: point.y + 1,
+                  backgroundColor: isExit ? colorMap[pos as keyof typeof colorMap] : '#FFFFFF'
+                }}
+              >
+                {/* Safe Square Circle (Matches imagenes/parchis.jpg) */}
+                {isSafe && (
+                  <div className="w-2/3 h-2/3 rounded-full border-[1px] border-black/20 bg-white/90 shadow-sm" />
+                )}
+                {/* Optional subtle position number */}
+                {/* <span className="text-[8px] absolute bottom-0 right-0 text-gray-200">{pos}</span> */}
+              </div>
+            );
+          })}
+
+          {/* Goal Lanes */}
+          {['red', 'yellow', 'blue', 'green'].map((color) =>
+            Array.from({ length: 8 }).map((_, i) => {
+              const pos = 69 + i;
+              const point = getFinalPathCoords(color as PlayerColor, pos);
+              const colorMap = { red: COLORS.red, yellow: COLORS.yellow, green: COLORS.green, blue: COLORS.blue };
+              return (
+                <div
+                  key={`${color}-${i}`}
+                  className="border-[0.5px] border-black/10"
+                  style={{
+                    gridColumnStart: point.x + 1,
+                    gridRowStart: point.y + 1,
+                    backgroundColor: colorMap[color as PlayerColor]
+                  }}
+                />
+              );
+            })
+          )}
+        </div>
+
+        {/* Goal Area (3x3 Center) */}
+        <div className="col-start-8 col-end-11 row-start-8 row-end-11 relative overflow-hidden bg-white border-[0.5px] border-black/10">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <polygon points="50,50 0,0 100,0" fill={COLORS.yellow} />
+            <polygon points="50,50 100,0 100,100" fill={COLORS.blue} />
+            <polygon points="50,50 100,100 0,100" fill={COLORS.green} />
+            <polygon points="50,50 0,100 0,0" fill={COLORS.red} />
+            <line x1="0" y1="0" x2="100" y2="100" stroke="black" strokeWidth="0.2" opacity="0.1" />
+            <line x1="100" y1="0" x2="0" y2="100" stroke="black" strokeWidth="0.2" opacity="0.1" />
+          </svg>
+        </div>
 
         {/* Tokens Layer */}
         <div className="absolute inset-0 pointer-events-none">
@@ -227,18 +155,18 @@ export const ParchisBoard: React.FC<BoardProps> = ({ tokens, onTokenClick, highl
           ))}
         </div>
 
-        {/* Ghost Indicators */}
+        {/* Highlights */}
         {highlightedPositions.map((pos, idx) => {
           const point = pos >= 68 ? getFinalPathCoords(tokens[0]?.color || 'red', pos) : getSquareCoords(pos);
           return (
             <div
               key={idx}
-              className="absolute bg-white/40 rounded-full border-2 border-white/60 animate-pulse z-10 pointer-events-none"
+              className="absolute bg-white/40 rounded-full border-2 border-white animate-pulse z-30 pointer-events-none shadow-[0_0_15px_white]"
               style={{
-                left: `${(point.x / 15) * 100}%`,
-                top: `${(point.y / 15) * 100}%`,
-                width: `${(1 / 15) * 100}%`,
-                height: `${(1 / 15) * 100}%`,
+                left: `${(point.x / GRID_SIZE) * 100}%`,
+                top: `${(point.y / GRID_SIZE) * 100}%`,
+                width: `${(1 / GRID_SIZE) * 100}%`,
+                height: `${(1 / GRID_SIZE) * 100}%`,
                 transform: 'scale(0.8)',
               }}
             />
@@ -249,36 +177,58 @@ export const ParchisBoard: React.FC<BoardProps> = ({ tokens, onTokenClick, highl
   );
 };
 
-const TokenComponent: React.FC<{ token: Token; coords: any; onClick: () => void }> = ({ token, coords, onClick }) => {
-  const colors = {
-    red: 'from-red-400 to-red-600 border-red-900',
-    blue: 'from-blue-400 to-blue-600 border-blue-900',
-    yellow: 'from-yellow-400 to-yellow-600 border-yellow-900',
-    green: 'from-green-400 to-green-600 border-green-900',
+const HomeArea: React.FC<{ color: PlayerColor; className?: string }> = ({ color, className }) => {
+  const colorMap = {
+    red: COLORS.red,
+    yellow: COLORS.yellow,
+    green: COLORS.green,
+    blue: COLORS.blue
   };
+
+  return (
+    <div className={cn(className, "relative p-4 md:p-10 border-[0.5px] border-black/20")}>
+      <div className="w-full h-full relative" style={{ backgroundColor: colorMap[color] }}>
+        <div className="grid grid-cols-2 grid-rows-2 gap-4 md:gap-12 p-4 md:p-8 w-full h-full">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="rounded-full border-[3px] border-black/20 bg-black/5 aspect-square" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TokenComponent: React.FC<{ token: Token; coords: any; onClick: () => void }> = ({ token, coords, onClick }) => {
+  const colorMap = {
+    red: 'from-[#FF80AB] via-[#FF4081] to-[#C2185B] border-[#880E4F]',
+    yellow: 'from-[#FFF176] via-[#FFEB3B] to-[#FBC02D] border-[#F57F17]',
+    green: 'from-[#B9F6CA] via-[#00E676] to-[#388E3C] border-[#1B5E20]',
+    blue: 'from-[#82B1FF] via-[#448AFF] to-[#1976D2] border-[#0D47A1]',
+  };
+
+  const tokenNumber = (parseInt(token.id.split('-')[1]) % 4) + 1;
 
   return (
     <motion.div
       layout
       onClick={onClick}
-      className={cn(
-        "absolute cursor-pointer flex items-center justify-center z-20 pointer-events-auto",
-      )}
+      className="absolute cursor-pointer flex items-center justify-center z-40 pointer-events-auto"
       style={coords}
       initial={false}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
     >
       <motion.div
-        whileHover={{ scale: 1.1 }}
+        whileHover={{ scale: 1.2, y: -5 }}
         whileTap={{ scale: 0.9 }}
         className={cn(
-          "w-[80%] h-[80%] rounded-full border-4 shadow-lg flex items-center justify-center relative bg-gradient-to-b",
-          colors[token.color]
+          "w-[90%] h-[90%] rounded-full border-[2px] shadow-[0_5px_10px_rgba(0,0,0,0.4)] flex items-center justify-center relative bg-gradient-to-br",
+          colorMap[token.color]
         )}
       >
-        <div className="w-[70%] h-[70%] rounded-full border-2 border-white/40 flex items-center justify-center">
-          <div className="w-[40%] h-[40%] bg-white/60 rounded-full shadow-inner" />
-        </div>
+        <div className="absolute top-[15%] left-[15%] w-1/3 h-1/4 bg-white/40 rounded-full blur-[2px]" />
+        <span className="relative z-10 text-white font-black text-lg drop-shadow-[0_2px_3px_rgba(0,0,0,0.5)]">
+          {tokenNumber}
+        </span>
       </motion.div>
     </motion.div>
   );

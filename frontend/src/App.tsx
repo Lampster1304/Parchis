@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
 import { ParchisBoard } from './components/Board';
-import { Dice } from './components/Dice';
 import { HUD } from './components/HUD';
 import { Navbar } from './components/Navbar';
 import { GameState, Token, PlayerColor } from './types';
 import { cn } from './utils';
 import { authService, UserProfile } from './services/authService';
 import { AuthView } from './components/AuthView';
-import { Trophy, Users, Coins, X, ShoppingBag, MessageSquare, Settings as SettingsIcon, Search, UserPlus, Check, Plus, Key } from 'lucide-react';
+import { Trophy, Users, Coins, X, ShoppingBag, MessageSquare, Settings as SettingsIcon, Search, UserPlus, Check, Plus, Key, Flag, RotateCcw } from 'lucide-react';
 
 // --- Modal Component ---
 const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => (
@@ -44,6 +43,29 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string, chi
   </AnimatePresence>
 );
 
+const SESSION_KEY = 'parchis_game_session';
+
+interface GameSession {
+  roomCode: string;
+  myColor: PlayerColor;
+  uid: string;
+}
+
+const saveSession = (session: GameSession) => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+};
+
+const loadSession = (): GameSession | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+
+const clearSession = () => {
+  localStorage.removeItem(SESSION_KEY);
+};
+
 // --- Main App Component ---
 export default function App() {
   // Auth & Profile State
@@ -65,6 +87,7 @@ export default function App() {
   const [friendsList, setFriendsList] = useState<UserProfile[]>([]);
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [pendingRejoin, setPendingRejoin] = useState<GameSession | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -115,16 +138,61 @@ export default function App() {
 
     newSocket.on('player-assigned', (color: PlayerColor) => {
       setMyColor(color);
+      // Update session with correct color
+      const session = loadSession();
+      if (session) {
+        saveSession({ ...session, myColor: color });
+      }
     });
 
     newSocket.on('room-update', (data: GameState) => {
       setGameState(data);
+      // Clear session when game finishes
+      if (data.status === 'finished') {
+        clearSession();
+      }
+    });
+
+    newSocket.on('player-surrendered', ({ color }: { color: string }) => {
+      showToast(`${color.toUpperCase()} player surrendered!`, 'error');
+    });
+
+    newSocket.on('game-won', ({ winnerColor }: { winnerColor: string }) => {
+      showToast(`${winnerColor.toUpperCase()} wins the game!`, 'success');
+      clearSession();
+    });
+
+    newSocket.on('check-room-result', (result: { exists: boolean; canRejoin: boolean; color?: PlayerColor; status?: string }) => {
+      if (result.exists && result.canRejoin && result.status === 'playing') {
+        const session = loadSession();
+        if (session && result.color) {
+          setPendingRejoin({ ...session, myColor: result.color });
+        }
+      } else {
+        clearSession();
+        setPendingRejoin(null);
+      }
+    });
+
+    newSocket.on('rejoin-failed', () => {
+      clearSession();
+      setPendingRejoin(null);
+      showToast('Could not rejoin game', 'error');
     });
 
     return () => {
       newSocket.close();
     };
   }, [currentUser]);
+
+  // Rejoin detection on app load
+  useEffect(() => {
+    if (!socket || !currentUser) return;
+    const session = loadSession();
+    if (session && session.uid === currentUser.uid) {
+      socket.emit('check-room', { roomId: session.roomCode, uid: session.uid });
+    }
+  }, [socket, currentUser]);
 
   // Sync View with Game Status
   useEffect(() => {
@@ -146,12 +214,14 @@ export default function App() {
       setRoomCode(code);
       setView('waiting-room');
       socket?.emit('join-room', { roomId: code, uid: currentUser.uid });
+      saveSession({ roomCode: code, myColor: 'red', uid: currentUser.uid });
       return;
     }
     // Each public mode gets its own room
     const publicRoomId = `public-${mode || 'rookie'}`;
     setRoomCode(publicRoomId);
     socket?.emit('join-room', { roomId: publicRoomId, uid: currentUser.uid });
+    saveSession({ roomCode: publicRoomId, myColor: 'red', uid: currentUser.uid });
     setView('game');
   };
 
@@ -164,6 +234,7 @@ export default function App() {
       setRoomCode(code);
       setView('waiting-room');
       socket?.emit('join-room', { roomId: code, uid: currentUser.uid });
+      saveSession({ roomCode: code, myColor: 'red', uid: currentUser.uid });
       setActiveModal(null);
       setJoinCodeInput('');
       showToast('Entered waiting room!');
@@ -196,6 +267,7 @@ export default function App() {
     if (roomCode) {
       socket?.emit('leave-room', { roomId: roomCode, uid: currentUser?.uid });
     }
+    clearSession();
     setRoomCode(null);
     setGameState(null);
     setMyColor(null);
@@ -204,10 +276,33 @@ export default function App() {
 
   const handleLogout = () => {
     handleLeaveRoom();
+    clearSession();
     authService.logout();
     setCurrentUser(null);
     setActiveModal(null);
     setActiveTab('home');
+  };
+
+  const handleSurrender = () => {
+    if (roomCode && currentUser) {
+      socket?.emit('surrender', { roomId: roomCode, uid: currentUser.uid });
+    }
+    clearSession();
+    setRoomCode(null);
+    setGameState(null);
+    setMyColor(null);
+    setView('lobby');
+    setActiveModal(null);
+    setActiveTab('home');
+  };
+
+  const handleRejoinGame = () => {
+    if (!pendingRejoin || !socket) return;
+    socket.emit('rejoin-room', { roomId: pendingRejoin.roomCode, uid: pendingRejoin.uid });
+    setRoomCode(pendingRejoin.roomCode);
+    setMyColor(pendingRejoin.myColor);
+    setView('game');
+    setPendingRejoin(null);
   };
 
   const handleAuthSuccess = async (user: UserProfile) => {
@@ -321,6 +416,13 @@ export default function App() {
         onShopClick={() => handleNavChange('shop')}
         onProfileClick={() => handleNavChange('profile')}
         user={currentUser}
+        players={gameState?.players || []}
+        currentUserId={currentUser?.uid}
+        onRoll={handleRollDice}
+        lastDiceRoll={gameState?.lastDiceRoll}
+        currentTurn={gameState?.currentTurn}
+        myColor={myColor}
+        onSurrender={handleSurrender}
       />
 
       <main className="h-screen w-full flex items-center justify-center p-4 overflow-hidden">
@@ -331,8 +433,44 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="w-full h-full flex flex-col md:flex-row items-center justify-center gap-6 px-4 md:px-10 overflow-x-auto no-scrollbar py-20"
+              className="w-full h-full flex flex-col items-center justify-center gap-6 px-4 md:px-10 overflow-x-auto no-scrollbar py-20"
             >
+              {/* Rejoin Banner */}
+              <AnimatePresence>
+                {pendingRejoin && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="w-full max-w-3xl bg-yellow-500/20 border border-yellow-500/40 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-xl"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-yellow-500/30 p-3 rounded-2xl">
+                        <RotateCcw className="w-6 h-6 text-yellow-500" />
+                      </div>
+                      <div>
+                        <p className="text-yellow-500 font-heading text-xl uppercase tracking-wider">Game in progress</p>
+                        <p className="text-yellow-500/60 text-xs font-bold">You were disconnected. Rejoin your match?</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleRejoinGame}
+                        className="bg-yellow-500 text-slate-900 font-heading text-lg px-8 py-3 rounded-2xl shadow-xl hover:scale-[1.05] active:scale-95 transition-all uppercase tracking-widest"
+                      >
+                        REJOIN
+                      </button>
+                      <button
+                        onClick={() => { clearSession(); setPendingRejoin(null); }}
+                        className="bg-white/10 text-white/60 font-bold text-sm px-4 py-3 rounded-2xl hover:bg-white/20 transition-all"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div className="w-full flex flex-row items-center justify-center gap-6">
               {[
                 { id: 'rookie', name: 'ROOKIE TABLE', entry: '100', prize: '350', type: 'public' },
                 { id: 'pro', name: 'PRO ARENA', entry: '1,000', prize: '3,500', type: 'public' },
@@ -384,6 +522,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
+              </div>
             </motion.div>
           ) : view === 'waiting-room' ? (
             <motion.div
@@ -409,39 +548,32 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-2xl px-4">
-                {[0, 1, 2, 3].map(i => {
-                  const player = gameState?.players[i];
-                  // DEBUG: if (player) console.log('Player in waiting room:', player.id, 'vs ME:', currentUser.uid);
-
-                  const details = player ? {
+              <div className={cn(
+                "grid gap-6 w-full max-w-2xl px-4",
+                (gameState?.players.length || 0) <= 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+              )}>
+                {(gameState?.players || []).map((player, i) => {
+                  const details = {
                     uid: player.id,
                     username: player.username || 'Player',
                     avatar: player.avatar || `https://picsum.photos/seed/${player.id}/100/100`
-                  } : null;
+                  };
 
                   return (
-                    <div key={i} className="flex flex-col items-center gap-4">
-                      <div className={cn(
-                        "w-24 h-24 rounded-[2rem] border-4 flex items-center justify-center transition-all overflow-hidden relative",
-                        details ? "border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]" : "border-white/5 bg-white/5 bg-dash gap-1"
-                      )}>
-                        {details ? (
-                          <img
-                            src={details.avatar}
-                            className="w-full h-full object-cover"
-                            alt={details.username}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${details.uid}`;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full border-2 border-white/10 animate-pulse" />
-                        )}
-                        {details && String(details.uid) === String(currentUser.uid) && (
+                    <div key={player.id} className="flex flex-col items-center gap-4">
+                      <div className="w-24 h-24 rounded-[2rem] border-4 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all overflow-hidden relative">
+                        <img
+                          src={details.avatar}
+                          className="w-full h-full object-cover"
+                          alt={details.username}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${details.uid}`;
+                          }}
+                        />
+                        {String(details.uid) === String(currentUser.uid) && (
                           <div className="absolute top-0 right-0 bg-emerald-500 text-[8px] font-black px-2 py-1 uppercase rounded-bl-xl text-white">YOU</div>
                         )}
-                        {player?.color && (
+                        {player.color && (
                           <div className={cn("absolute bottom-0 inset-x-0 h-1", {
                             "bg-red-500": player.color === 'red',
                             "bg-blue-500": player.color === 'blue',
@@ -450,11 +582,8 @@ export default function App() {
                           })} />
                         )}
                       </div>
-                      <span className={cn(
-                        "font-bold text-xs uppercase tracking-widest text-center max-w-[120px] truncate",
-                        details ? "text-white" : "text-white/10"
-                      )}>
-                        {details ? details.username : "Waiting..."}
+                      <span className="font-bold text-xs uppercase tracking-widest text-center max-w-[120px] truncate text-white">
+                        {details.username}
                       </span>
                     </div>
                   );
@@ -491,9 +620,6 @@ export default function App() {
                   onTokenClick={handleTokenClick}
                   highlightedPositions={getHighlightedPositions()}
                 />
-                <div className="absolute -right-32 lg:-right-48 hidden md:block">
-                  <Dice onRoll={handleRollDice} disabled={gameState?.currentTurn !== myColor} />
-                </div>
               </div>
             </motion.div>
           )}
@@ -684,7 +810,13 @@ export default function App() {
             <span className="font-bold">Music</span>
             <div className="w-12 h-6 bg-slate-600 rounded-full relative"><div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" /></div>
           </div>
-          <button onClick={() => { handleLeaveRoom(); setActiveModal(null); setActiveTab('home'); }} className="w-full bg-red-500/20 text-red-500 font-bold py-4 rounded-2xl border border-red-500/20 hover:bg-red-500/30 transition-all">EXIT TO LOBBY</button>
+          {gameState?.status === 'playing' ? (
+            <button onClick={handleSurrender} className="w-full bg-red-500/20 text-red-500 font-bold py-4 rounded-2xl border border-red-500/20 hover:bg-red-500/30 transition-all flex items-center justify-center gap-2">
+              <Flag className="w-4 h-4" /> SURRENDER
+            </button>
+          ) : (
+            <button onClick={() => { handleLeaveRoom(); setActiveModal(null); setActiveTab('home'); }} className="w-full bg-red-500/20 text-red-500 font-bold py-4 rounded-2xl border border-red-500/20 hover:bg-red-500/30 transition-all">EXIT TO LOBBY</button>
+          )}
           <button onClick={handleLogout} className="w-full bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl border border-white/5 hover:bg-slate-700 hover:text-white transition-all">LOG OUT</button>
         </div>
       </Modal>
