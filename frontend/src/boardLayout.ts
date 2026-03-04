@@ -33,22 +33,23 @@ export const getSquareCoords = (pos: number): Point => {
 };
 
 export const getHomeCoords = (color: PlayerColor, index: number): Point => {
-  const circles: [number, number][] = [[1.5, 1.5], [4.5, 1.5], [1.5, 4.5], [4.5, 4.5]];
-  const [ox, oy] = circles[index % 4];
-  switch (color) {
-    case 'red': return { x: ox, y: oy };           // Top-Left
-    case 'yellow': return { x: 10 + ox, y: oy };    // Top-Right
-    case 'green': return { x: ox, y: 10 + oy };      // Bottom-Left
-    case 'blue': return { x: 10 + ox, y: 10 + oy }; // Bottom-Right
-  }
+  // Position tokens in home circles (initial positions on the board)
+  const homes: Record<PlayerColor, [number, number][]> = {
+    green:  [[2.5, 2.5], [4.5, 2.5], [2.5, 4.5], [4.5, 4.5]],
+    red:    [[12.5, 2.5], [14.5, 2.5], [12.5, 4.5], [14.5, 4.5]],
+    yellow: [[2.5, 12.5], [4.5, 12.5], [2.5, 14.5], [4.5, 14.5]],
+    blue:   [[12.5, 12.5], [14.5, 12.5], [12.5, 14.5], [14.5, 14.5]],
+  };
+  const [x, y] = homes[color][index % 4];
+  return { x, y };
 };
 
 const FINAL_LANES_XZ: Record<PlayerColor, [number, number][]> = {
   // Entrance (69) to square before goal (75)
-  red: [[0, 27], [0, 24], [0, 21], [0, 18], [0, 15], [0, 12], [0, 9]],
-  yellow: [[27, 0], [24, 0], [21, 0], [18, 0], [15, 0], [12, 0], [9, 0]],
+  green: [[0, 27], [0, 24], [0, 21], [0, 18], [0, 15], [0, 12], [0, 9]],
+  red: [[27, 0], [24, 0], [21, 0], [18, 0], [15, 0], [12, 0], [9, 0]],
   blue: [[0, -27], [0, -24], [0, -21], [0, -18], [0, -15], [0, -12], [0, -9]],
-  green: [[-27, 0], [-24, 0], [-21, 0], [-18, 0], [-15, 0], [-12, 0], [-9, 0]],
+  yellow: [[-27, 0], [-24, 0], [-21, 0], [-18, 0], [-15, 0], [-12, 0], [-9, 0]],
 };
 
 export const getFinalPathCoords = (color: PlayerColor, pos: number): Point => {

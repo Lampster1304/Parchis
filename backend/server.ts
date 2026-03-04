@@ -22,7 +22,7 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3005;
 
   // --- REST API for AUTH & SOCIAL ---
 
@@ -101,16 +101,16 @@ async function startServer() {
 
   // Exit positions per color (where tokens enter the main board)
   const EXIT_POSITIONS: Record<string, number> = {
-    red: 68, blue: 34, yellow: 51, green: 17
+    green: 1, yellow: 18, blue: 35, red: 52
   };
 
   // Safe squares: 4 exits + 8 marked safe squares
-  const SAFE_SQUARES = [5, 12, 17, 22, 29, 34, 39, 46, 51, 56, 63, 68];
+  const SAFE_SQUARES = [1, 5, 12, 18, 22, 29, 35, 39, 46, 52, 56, 63];
 
   // Entry to final path: square just before entering the corridor
   // Each color enters after completing ~63 squares from their exit
   const FINAL_ENTRY_SQUARES: Record<string, number> = {
-    red: 63, blue: 29, yellow: 46, green: 12
+    green: 64, blue: 30, red: 47, yellow: 13
   };
 
   // --- UTILITY FUNCTIONS ---
@@ -666,7 +666,7 @@ async function startServer() {
 
       // New player
       if (room.players.length < 4 && room.status === "waiting") {
-        const colors = ["red", "blue", "yellow", "green"];
+        const colors = ["red", "green", "yellow", "blue"];
         const assignedColor = colors[room.players.length];
         room.players.push({ uid, color: assignedColor, socketId: socket.id });
         socket.emit("player-assigned", assignedColor);

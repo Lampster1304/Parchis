@@ -32,19 +32,23 @@ export const ParchisBoard: React.FC<BoardProps> = ({ tokens, onTokenClick, highl
     }
 
     const stackOffsetsByCount: Record<number, Array<{ x: number; y: number }>> = {
-      2: [{ x: -24, y: 0 }, { x: 24, y: 0 }],
-      3: [{ x: -24, y: -18 }, { x: 24, y: -18 }, { x: 0, y: 20 }],
-      4: [{ x: -24, y: -24 }, { x: 24, y: -24 }, { x: -24, y: 24 }, { x: 24, y: 24 }],
+      2: [{ x: -45, y: 0 }, { x: 45, y: 0 }],
+      3: [{ x: -60, y: 0 }, { x: 0, y: 0 }, { x: 60, y: 0 }],
+      4: [{ x: -70, y: -35 }, { x: 70, y: -35 }, { x: -70, y: 35 }, { x: 70, y: 35 }],
     };
-    const offset = stackOffsetsByCount[stackSize]?.[tokenIndex] || { x: 0, y: 0 };
-    const scale = stackSize > 1 ? 0.78 : 0.9;
+    const isHome = token.position === -1;
+    const offset = isHome ? { x: 0, y: 0 } : (stackOffsetsByCount[stackSize]?.[tokenIndex] || { x: 0, y: 0 });
+    const scaleByCount: Record<number, number> = { 1: 0.9, 2: 0.6, 3: 0.5, 4: 0.45 };
+    const scale = isHome ? 0.9 : (scaleByCount[stackSize] || 0.45);
 
     return {
       left: `${(point.x / GRID_SIZE) * 100}%`,
       top: `${(point.y / GRID_SIZE) * 100}%`,
       width: `${(1 / GRID_SIZE) * 100}%`,
       height: `${(1 / GRID_SIZE) * 100}%`,
-      transform: `translate(${offset.x}%, ${offset.y}%) scale(${scale})`,
+      transform: isHome
+        ? `translate(-50%, -50%) scale(${scale})`
+        : `translate(${offset.x}%, ${offset.y}%) scale(${scale})`,
       zIndex: 40 + tokenIndex,
     };
   };
@@ -53,13 +57,13 @@ export const ParchisBoard: React.FC<BoardProps> = ({ tokens, onTokenClick, highl
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="relative w-[min(95vw,95vh,800px)] aspect-square rounded-2xl p-2 md:p-4 shadow-2xl flex items-center justify-center overflow-hidden bg-black/30"
+      className="relative w-[min(100vw,calc(100dvh-16rem),800px)] aspect-square rounded-xl sm:rounded-2xl p-0 shadow-2xl flex items-center justify-center overflow-hidden bg-black/30"
     >
       <div className="relative w-full h-full rounded shadow-inner border-[1px] border-black/40 overflow-hidden">
         <img
-          src="/assets/parchis.jpg"
+          src="/assets/tablero.png"
           alt="Parchis board"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none"
           draggable={false}
         />
 

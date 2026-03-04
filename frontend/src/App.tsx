@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
 import { ParchisBoard } from './components/Board';
-import { HUD } from './components/HUD';
+import { HUD, GamePlayerRow } from './components/HUD';
 import { Navbar } from './components/Navbar';
 import { GameState, Token, PlayerColor } from './types';
 import { cn } from './utils';
@@ -99,7 +99,7 @@ export default function App() {
   };
 
   const EXIT_POSITIONS: Record<PlayerColor, number> = {
-    red: 68, blue: 34, yellow: 51, green: 17
+    green: 1, yellow: 18, blue: 35, red: 52
   };
 
   // Track which die the player wants to use (for split dice)
@@ -497,7 +497,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden selection:bg-[#FF3D004D] relative">
+    <div className={cn("min-h-screen bg-background selection:bg-[#FF3D004D] relative", view === 'game' ? "h-[100dvh] overflow-hidden fixed inset-0" : "overflow-hidden")}>
       {/* Background Effect */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
         <motion.div
@@ -535,7 +535,7 @@ export default function App() {
         turnSecondsLeft={Math.ceil(turnSecondsLeft)}
       />
 
-      <main className="h-screen w-full flex items-center justify-center p-4 overflow-hidden">
+      <main className={cn("w-full flex items-center justify-center overflow-hidden", view === 'game' ? "h-[100dvh] p-0" : "h-screen p-4")}>
         <AnimatePresence mode="wait">
           {view === 'lobby' ? (
             <motion.div
@@ -543,7 +543,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="w-full h-full flex flex-col items-center justify-center gap-6 px-4 md:px-10 overflow-x-auto no-scrollbar py-20"
+              className="w-full h-full flex flex-col items-center justify-start sm:justify-center gap-4 sm:gap-6 px-4 md:px-10 overflow-y-auto no-scrollbar py-20"
             >
               {/* Rejoin Banner */}
               <AnimatePresence>
@@ -580,52 +580,52 @@ export default function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className="w-full flex flex-row items-center justify-center gap-6">
+              <div className="w-full flex gap-4 sm:gap-6 max-w-6xl mx-auto overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 sm:grid sm:grid-cols-2 xl:grid-cols-4 sm:overflow-x-visible">
               {[
                 { id: 'rookie', name: 'ROOKIE TABLE', entry: '100', prize: '350', type: 'public' },
                 { id: 'pro', name: 'PRO ARENA', entry: '1,000', prize: '3,500', type: 'public' },
                 { id: 'private', name: 'PRIVATE MATCH', entry: '0', prize: 'VS FRIENDS', type: 'private' },
                 { id: 'legendary', name: 'LEGENDARY', entry: '50,000', prize: '180,000', type: 'public' },
               ].map((mode, idx) => (
-                <div key={idx} className="flex-shrink-0 w-full max-w-[320px]">
+                <div key={idx} className="min-w-[75vw] sm:min-w-0 w-full snap-center">
                   <div className={cn(
-                    "bg-black/40 backdrop-blur-2xl flex flex-col justify-between min-h-[400px] p-8 border border-white/10 rounded-[2.5rem] shadow-2xl relative overflow-hidden group hover:border-white/30 transition-all",
+                    "bg-black/40 backdrop-blur-2xl flex flex-col justify-between min-h-[280px] sm:min-h-[380px] p-5 sm:p-8 border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative overflow-hidden group hover:border-white/30 transition-all",
                     mode.type === 'private' && "border-yellow-500/30 bg-yellow-500/5"
                   )}>
                     <div>
-                      <h3 className="font-heading text-4xl leading-none mb-1 text-white">{mode.name}</h3>
+                      <h3 className="font-heading text-2xl sm:text-3xl xl:text-4xl leading-none mb-1 text-white">{mode.name}</h3>
                       <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest opacity-60">
                         <Users className="w-3 h-3" />
                         <span>{mode.type === 'private' ? 'Invite Only' : '4 Players'}</span>
                       </div>
                     </div>
-                    <div className="space-y-6 my-8">
-                      <div className="flex justify-between items-center bg-white/5 rounded-2xl p-4">
+                    <div className="space-y-4 sm:space-y-6 my-6 sm:my-8">
+                      <div className="flex justify-between items-center bg-white/5 rounded-2xl p-3 sm:p-4">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Entry Fee</span>
                         <div className="flex items-center gap-2 text-white">
                           <Coins className="w-4 h-4 text-emerald-400" />
-                          <span className="font-heading text-2xl">{mode.entry}</span>
+                          <span className="font-heading text-xl sm:text-2xl">{mode.entry}</span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center bg-white/5 rounded-2xl p-4">
+                      <div className="flex justify-between items-center bg-white/5 rounded-2xl p-3 sm:p-4">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reward</span>
                         <div className="flex items-center gap-2">
-                          <Trophy className="w-5 h-5 text-yellow-400" />
-                          <span className="font-heading text-3xl text-yellow-400">{mode.prize}</span>
+                          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+                          <span className="font-heading text-2xl sm:text-3xl text-yellow-400">{mode.prize}</span>
                         </div>
                       </div>
                     </div>
                     {mode.type === 'private' ? (
                       <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => handleJoinGame('private')} className="bg-yellow-500 text-slate-900 font-heading text-xl py-4 rounded-3xl shadow-xl hover:scale-[1.05] active:scale-95 transition-all">
+                        <button onClick={() => handleJoinGame('private')} className="bg-yellow-500 text-slate-900 font-heading text-lg sm:text-xl py-3 sm:py-4 rounded-3xl shadow-xl hover:scale-[1.05] active:scale-95 transition-all">
                           CREATE
                         </button>
-                        <button onClick={() => setActiveModal('join-room')} className="bg-white/10 text-white font-heading text-xl py-4 rounded-3xl border border-white/10 hover:bg-white/20 transition-all">
+                        <button onClick={() => setActiveModal('join-room')} className="bg-white/10 text-white font-heading text-lg sm:text-xl py-3 sm:py-4 rounded-3xl border border-white/10 hover:bg-white/20 transition-all">
                           JOIN
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => handleJoinGame(mode.id)} className="bg-white text-slate-900 font-heading text-2xl py-4 rounded-3xl shadow-xl hover:scale-[1.05] active:scale-95 transition-all">
+                      <button onClick={() => handleJoinGame(mode.id)} className="bg-white text-slate-900 font-heading text-xl sm:text-2xl py-3 sm:py-4 rounded-3xl shadow-xl hover:scale-[1.05] active:scale-95 transition-all">
                         JOIN TABLE
                       </button>
                     )}
@@ -640,27 +640,27 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="w-full max-w-4xl bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-12 flex flex-col items-center gap-10 shadow-3xl"
+              className="w-full max-w-4xl bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] sm:rounded-[3rem] p-4 sm:p-8 md:p-12 flex flex-col items-center gap-4 sm:gap-8 md:gap-10 shadow-3xl max-h-[90vh] overflow-y-auto no-scrollbar"
             >
               <div className="text-center">
-                <span className="text-[10px] text-yellow-500 font-black uppercase tracking-[0.4em] mb-4 block">Waiting Room</span>
-                <h2 className="font-heading text-6xl text-white mb-2 leading-none">INVITE FRIENDS</h2>
-                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 mt-8 flex flex-col items-center gap-2 group cursor-pointer hover:bg-white/10 transition-all"
+                <span className="text-[8px] sm:text-[10px] text-yellow-500 font-black uppercase tracking-[0.4em] mb-2 sm:mb-4 block">Waiting Room</span>
+                <h2 className="font-heading text-3xl sm:text-5xl md:text-6xl text-white mb-1 sm:mb-2 leading-none">INVITE FRIENDS</h2>
+                <div className="bg-white/5 border border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-3 sm:p-6 mt-4 sm:mt-8 flex flex-col items-center gap-1 sm:gap-2 group cursor-pointer hover:bg-white/10 transition-all"
                   onClick={() => {
                     navigator.clipboard.writeText(roomCode || '');
                     showToast('Code copied to clipboard!');
                   }}>
-                  <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Room Code</span>
-                  <div className="flex items-center gap-4">
-                    <span className="font-heading text-6xl text-yellow-500 tracking-[0.2em]">{roomCode}</span>
-                    <Key className="w-8 h-8 text-yellow-500/50" />
+                  <span className="text-[8px] sm:text-[10px] text-white/30 font-bold uppercase tracking-widest">Room Code</span>
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <span className="font-heading text-3xl sm:text-5xl md:text-6xl text-yellow-500 tracking-[0.15em] sm:tracking-[0.2em]">{roomCode}</span>
+                    <Key className="w-5 h-5 sm:w-8 sm:h-8 text-yellow-500/50" />
                   </div>
                 </div>
               </div>
 
               <div className={cn(
-                "grid gap-6 w-full max-w-2xl px-4",
-                (gameState?.players.length || 0) <= 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+                "grid gap-3 sm:gap-6 w-full max-w-2xl px-2 sm:px-4",
+                (gameState?.players.length || 0) <= 2 ? "grid-cols-2" : "grid-cols-4"
               )}>
                 {(gameState?.players || []).map((player, i) => {
                   const details = {
@@ -670,8 +670,8 @@ export default function App() {
                   };
 
                   return (
-                    <div key={player.id} className="flex flex-col items-center gap-4">
-                      <div className="w-24 h-24 rounded-[2rem] border-4 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all overflow-hidden relative">
+                    <div key={player.id} className="flex flex-col items-center gap-2 sm:gap-4">
+                      <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-[1.2rem] sm:rounded-[2rem] border-3 sm:border-4 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all overflow-hidden relative">
                         <img
                           src={details.avatar}
                           className="w-full h-full object-cover"
@@ -692,7 +692,7 @@ export default function App() {
                           })} />
                         )}
                       </div>
-                      <span className="font-bold text-xs uppercase tracking-widest text-center max-w-[120px] truncate text-white">
+                      <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-center max-w-[80px] sm:max-w-[120px] truncate text-white">
                         {details.username}
                       </span>
                     </div>
@@ -700,9 +700,9 @@ export default function App() {
                 })}
               </div>
 
-              <div className="w-full max-w-md space-y-4">
+              <div className="w-full max-w-md space-y-3 sm:space-y-4">
                 {isPublicRoom ? (
-                  <div className="w-full bg-white/5 border border-white/10 text-white/80 text-sm font-bold py-5 px-6 rounded-[2rem] text-center uppercase tracking-widest">
+                  <div className="w-full bg-white/5 border border-white/10 text-white/80 text-[10px] sm:text-sm font-bold py-3 sm:py-5 px-4 sm:px-6 rounded-[1.5rem] sm:rounded-[2rem] text-center uppercase tracking-widest">
                     Matchmaking público: inicia automático al completar 4 jugadores ({gameState?.players.length || 0}/4)
                   </div>
                 ) : (
@@ -713,12 +713,12 @@ export default function App() {
                         socket?.emit('start-match', roomCode);
                       }
                     }}
-                    className="w-full bg-white text-slate-900 font-heading text-2xl py-6 rounded-[2rem] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed uppercase tracking-widest"
+                    className="w-full bg-white text-slate-900 font-heading text-lg sm:text-2xl py-3 sm:py-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed uppercase tracking-widest"
                   >
                     {(gameState?.players.length || 0) < 2 ? 'WAITING FOR PLAYERS...' : 'Start Match'}
                   </button>
                 )}
-                <button onClick={handleLeaveRoom} className="w-full text-white/30 font-bold text-sm hover:text-white transition-all uppercase tracking-widest">
+                <button onClick={handleLeaveRoom} className="w-full text-white/30 font-bold text-xs sm:text-sm hover:text-white transition-all uppercase tracking-widest">
                   Leave Room
                 </button>
               </div>
@@ -728,14 +728,54 @@ export default function App() {
               key="game"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center justify-center w-full h-full relative"
+              className="flex flex-col items-center justify-center w-full h-[100dvh] relative"
             >
-              <div className="relative flex items-center justify-center max-w-full max-h-full">
+              {/* Board + Player rows grouped tightly */}
+              <div className="flex flex-col items-center w-full">
+                {/* Top player row: green (left), red (right) */}
+                <div className="w-[min(100vw,calc(100dvh-16rem),800px)] px-1 pb-1">
+                  <GamePlayerRow
+                    players={gameState?.players || []}
+                    colors={['green', 'red']}
+                    currentUserId={currentUser?.uid}
+                    user={currentUser}
+                    currentTurn={gameState?.currentTurn}
+                    myColor={myColor}
+                    lastDiceRoll={gameState?.lastDiceRoll}
+                    remainingDice={gameState?.remainingDice || []}
+                    onRoll={handleRollDice}
+                    onPassDie={handlePassDie}
+                    onProfileClick={() => handleNavChange('profile')}
+                    turnProgress={turnProgress}
+                    turnSecondsLeft={Math.ceil(turnSecondsLeft)}
+                  />
+                </div>
+
+                {/* Board */}
                 <ParchisBoard
                   tokens={gameState?.players.flatMap(p => p.tokens) || []}
                   onTokenClick={handleTokenClick}
                   highlightedPositions={getHighlightedPositions()}
                 />
+
+                {/* Bottom player row: yellow (left), blue (right) */}
+                <div className="w-[min(100vw,calc(100dvh-16rem),800px)] px-1 pt-1">
+                  <GamePlayerRow
+                    players={gameState?.players || []}
+                    colors={['yellow', 'blue']}
+                    currentUserId={currentUser?.uid}
+                    user={currentUser}
+                    currentTurn={gameState?.currentTurn}
+                    myColor={myColor}
+                    lastDiceRoll={gameState?.lastDiceRoll}
+                    remainingDice={gameState?.remainingDice || []}
+                    onRoll={handleRollDice}
+                    onPassDie={handlePassDie}
+                    onProfileClick={() => handleNavChange('profile')}
+                    turnProgress={turnProgress}
+                    turnSecondsLeft={Math.ceil(turnSecondsLeft)}
+                  />
+                </div>
               </div>
 
               {/* Die Selector: shown when 2 different dice remain and it's my turn */}
@@ -744,7 +784,7 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 z-50"
+                  className="absolute bottom-28 sm:bottom-28 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 z-50"
                 >
                   <span className="text-white/60 text-xs font-bold uppercase tracking-widest">Usar dado:</span>
                   {gameState.remainingDice.map((die, idx) => (

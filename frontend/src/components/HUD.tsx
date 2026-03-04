@@ -29,14 +29,7 @@ export const HUD: React.FC<{
   turnSecondsLeft?: number;
 }> = ({ view = 'game', onShopClick, onProfileClick, user, players = [], currentUserId, onRoll, lastDiceRoll, remainingDice = [], currentTurn, myColor, onSurrender, onPassDie, turnProgress = 1, turnSecondsLeft = 0 }) => {
 
-  const otherPlayers = players.filter(p => String(p.id) !== String(currentUserId));
   const currentPlayer = players.find(p => String(p.id) === String(currentUserId));
-
-  const otherPositions = [
-    { className: "absolute top-24 right-4 md:right-10", diceAlign: "right" as const },
-    { className: "absolute bottom-32 left-4 md:left-10", diceAlign: "left" as const },
-    { className: "absolute bottom-32 right-4 md:right-10", diceAlign: "right" as const },
-  ];
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 p-4 md:p-6 flex flex-col justify-between">
@@ -85,51 +78,7 @@ export const HUD: React.FC<{
         </div>
       </div>
 
-      {/* Avatars + Dice in corners - Only in Game View */}
-      {view === 'game' && players.length > 0 && (
-        <div className="absolute inset-0 pointer-events-none p-4 md:p-10">
-          {/* Current Player - Top Left */}
-          <div className="absolute top-24 left-4 md:left-10 pointer-events-auto">
-            <PlayerWithDice
-              name={user?.username || "You"}
-              image={user?.avatar || "https://picsum.photos/seed/me/100/100"}
-              color={currentPlayer?.color || 'red'}
-              isTurn={currentPlayer?.isTurn || false}
-              isMyDice={true}
-              canRoll={currentTurn === myColor && remainingDice.length === 0 && !lastDiceRoll}
-              diceValues={currentPlayer?.isTurn ? lastDiceRoll : null}
-              remainingDice={currentPlayer?.isTurn ? remainingDice : []}
-              onRoll={onRoll}
-              onPassDie={onPassDie}
-              diceAlign="left"
-              onAvatarClick={onProfileClick}
-              timerProgress={currentPlayer?.isTurn ? turnProgress : 1}
-              timerSecondsLeft={currentPlayer?.isTurn ? turnSecondsLeft : undefined}
-            />
-          </div>
-          {/* Other Players */}
-          {otherPlayers.map((player, idx) => {
-            if (idx >= otherPositions.length) return null;
-            return (
-              <div key={player.id} className={cn(otherPositions[idx].className, "pointer-events-auto")}>
-                <PlayerWithDice
-                  name={player.username || "Player"}
-                  image={player.avatar || `https://picsum.photos/seed/${player.id}/100/100`}
-                  color={player.color}
-                  isTurn={player.isTurn}
-                  isMyDice={false}
-                  canRoll={false}
-                  diceValues={player.isTurn ? lastDiceRoll : null}
-                  remainingDice={player.isTurn ? remainingDice : []}
-                  diceAlign={otherPositions[idx].diceAlign}
-                  timerProgress={player.isTurn ? turnProgress : 1}
-                  timerSecondsLeft={player.isTurn ? turnSecondsLeft : undefined}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Desktop player cards removed - now using GamePlayerRow in App.tsx for all sizes */}
     </div>
   );
 };
@@ -153,7 +102,7 @@ const PlayerWithDice: React.FC<{
 }> = ({ name, image, color, isTurn, isMyDice, canRoll, diceValues, remainingDice, onRoll, onPassDie, diceAlign, onAvatarClick, timerProgress = 1, timerSecondsLeft }) => {
   return (
     <div className={cn(
-      "flex items-center gap-3",
+      "flex items-center gap-1.5 sm:gap-3",
       diceAlign === 'right' && "flex-row-reverse"
       )}>
       {/* Avatar */}
@@ -230,7 +179,7 @@ const MiniDice: React.FC<{
 
   return (
     <div className={cn(
-      "flex gap-1.5 p-1.5 rounded-xl backdrop-blur-sm border transition-all",
+      "flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-lg sm:rounded-xl backdrop-blur-sm border transition-all",
       isTurn
         ? "bg-black/30 border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.2)]"
         : "bg-black/20 border-white/5 opacity-40 scale-90"
@@ -250,7 +199,7 @@ const MiniDice: React.FC<{
             whileTap={!disabled ? { scale: 0.85 } : {}}
             onClick={rollDice}
             className={cn(
-              "w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-md relative overflow-hidden",
+              "w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg bg-white flex items-center justify-center shadow-md relative overflow-hidden",
               disabled && "cursor-default",
               !disabled && "cursor-pointer",
               rolling && "animate-bounce",
@@ -336,10 +285,10 @@ const Avatar: React.FC<{
   const ringColor = color ? COLOR_HEX[color] : '#ffffff';
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-0.5 sm:gap-2">
       <div
         className={cn(
-          "w-16 h-16 md:w-20 md:h-20 rounded-full p-[3px] relative transition-transform",
+          "w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full p-[2px] sm:p-[3px] relative transition-transform",
           color ? COLOR_RING[color] : "shadow-[0_0_10px_rgba(255,255,255,0.2)]",
           active && "scale-110"
         )}
@@ -349,18 +298,69 @@ const Avatar: React.FC<{
           <img src={image} alt={name} className="w-full h-full object-cover" />
         </div>
         {color && (
-          <div className={cn("absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white", COLOR_DOT[color])} />
+          <div className={cn("absolute -bottom-0.5 sm:-bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-white", COLOR_DOT[color])} />
         )}
         {active && (
-          <div className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center animate-pulse">
-            <span className="text-[8px] font-black text-slate-900">{turnSecondsLeft ?? 0}</span>
+          <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 min-w-4 h-4 sm:min-w-5 sm:h-5 px-0.5 sm:px-1 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center animate-pulse">
+            <span className="text-[6px] sm:text-[8px] font-black text-slate-900">{turnSecondsLeft ?? 0}</span>
           </div>
         )}
       </div>
       <span className={cn(
-        "text-white font-bold text-xs drop-shadow-md px-2 py-0.5 rounded-full",
+        "text-white font-bold text-[8px] sm:text-xs drop-shadow-md px-1.5 sm:px-2 py-0.5 rounded-full",
         color ? COLOR_LABEL[color] : "bg-black/20"
       )}>{name}</span>
+    </div>
+  );
+};
+
+// --- Exported row of players for mobile game layout (above/below board) ---
+export const GamePlayerRow: React.FC<{
+  players: { id: string; username: string; avatar: string; color: string; isTurn: boolean }[];
+  colors: string[];
+  currentUserId?: string;
+  user?: any;
+  currentTurn?: string | null;
+  myColor?: string | null;
+  lastDiceRoll?: [number, number] | null;
+  remainingDice?: number[];
+  onRoll?: (values: [number, number]) => void;
+  onPassDie?: (dieValue: number) => void;
+  onProfileClick?: () => void;
+  turnProgress?: number;
+  turnSecondsLeft?: number;
+}> = ({ players, colors, currentUserId, user, currentTurn, myColor, lastDiceRoll, remainingDice = [], onRoll, onPassDie, onProfileClick, turnProgress = 1, turnSecondsLeft = 0 }) => {
+  const rowPlayers = colors
+    .map(c => players.find(p => p.color === c))
+    .filter(Boolean) as typeof players;
+  if (rowPlayers.length === 0) return null;
+
+  return (
+    <div className="flex w-full">
+      {rowPlayers.map((player) => {
+        const isMe = String(player.id) === String(currentUserId);
+        const isLeft = player.color === colors[0];
+        return (
+          <div key={player.id} className={cn("w-1/2 flex pointer-events-auto", isLeft ? "justify-start pl-1" : "justify-end pr-1")}>
+            <PlayerWithDice
+              name={isMe ? (user?.username || "You") : (player.username || "Player")}
+              image={isMe ? (user?.avatar || `https://picsum.photos/seed/${player.id}/100/100`) : (player.avatar || `https://picsum.photos/seed/${player.id}/100/100`)}
+              color={player.color}
+              isTurn={player.isTurn}
+              isMyDice={isMe}
+              canRoll={isMe && currentTurn === myColor && remainingDice.length === 0 && !lastDiceRoll}
+              diceValues={player.isTurn ? lastDiceRoll : null}
+              remainingDice={player.isTurn ? remainingDice : []}
+              onRoll={isMe ? onRoll : undefined}
+              onPassDie={isMe ? onPassDie : undefined}
+              diceAlign={isLeft ? "left" : "right"}
+              onAvatarClick={isMe ? onProfileClick : undefined}
+              timerProgress={player.isTurn ? turnProgress : 1}
+              timerSecondsLeft={player.isTurn ? turnSecondsLeft : undefined}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 };

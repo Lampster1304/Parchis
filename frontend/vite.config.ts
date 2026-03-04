@@ -20,13 +20,14 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: '0.0.0.0', // Allow network access (for mobile)
+      allowedHosts: ['parchis.losmilis.com'],
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:3000',
+          target: 'http://127.0.0.1:3005',
           changeOrigin: true
         },
         '/socket.io': {
-          target: 'http://127.0.0.1:3000',
+          target: 'http://127.0.0.1:3005',
           ws: true,
           changeOrigin: true
         }
